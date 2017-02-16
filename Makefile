@@ -1,4 +1,4 @@
-.PHONY: all image package dist clean
+.PHONY: all image package dist clean test
 
 all: package
 
@@ -14,3 +14,7 @@ dist: package
 clean:
 	rm -r lambda/node_modules
 	docker rmi --force amazonlinux:nodejs
+
+test: package
+	docker run -ti --rm --volume ${PWD}/lambda:/build --volume ~/.aws/:/root/.aws amazonlinux:nodejs npm install
+	docker run -ti --rm --volume ${PWD}/lambda:/build --volume ~/.aws/:/root/.aws amazonlinux:nodejs npm test
