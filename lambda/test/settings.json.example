@@ -1,0 +1,6 @@
+{
+  "awsProfile": "yourprofile",
+  "bucket": "yours3bucket",
+  "imagePathOriginal": "/test/testimage.jpg",
+  "imagePathResized": "/test/testimage-123x123.jpg"
+}
