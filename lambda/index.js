@@ -7,7 +7,7 @@ const Sharp = require('sharp');
 const BUCKET = process.env.BUCKET;
 const URL = process.env.URL;
 
-exports.handler = function(event, context) {
+exports.handler = function(event, context, callback) {
   let key = event.path; // Works with API Gateway Proxy requests
   if (key[0] === '/') {
     key = key.substr(1);
@@ -15,7 +15,7 @@ exports.handler = function(event, context) {
 
   const match = key.match(/(.*)-(\d+)x(\d+)\.(jpg|png)/i);
   if (match === null) {
-    context.succeed({
+    callback(null, {
       statusCode: '404',
       body: '404 - Not Found',
     });
@@ -31,7 +31,7 @@ exports.handler = function(event, context) {
   // Check if the resized image already exists.
   S3.getObject({Bucket: BUCKET, Key: key}).promise()
     .then((data) => {
-      context.succeed({
+      callback(null, {
         statusCode: '307',
         headers: {'location': `${URL}/${key}`},
         body: '',
@@ -40,7 +40,7 @@ exports.handler = function(event, context) {
     .catch((err) => {
       // Bail if any error except object not found is returned.
       if (err.code !== 'NoSuchKey') {
-        context.fail(err);
+        callback('Error checking for existence of key ' + key);
         return;
       }
       // Fetch the original object and resize it.
@@ -59,13 +59,23 @@ exports.handler = function(event, context) {
             Expires: dataAndBuffer.data.Expires
           }).promise()
         )
-        .then(() => context.succeed({
+        .then(() => callback(null, {
             statusCode: '307',
             headers: {'location': `${URL}/${key}`},
             body: '',
           })
         )
-        .catch((err) => context.fail(err))
+        .catch((err) => {
+          // Gently error object not found is returned.
+          if (err.code === 'NoSuchKey') {
+            callback(null, {
+              statusCode: '404',
+              body: '404 - Not Found',
+            });
+            return;
+          }
+          callback('Error getting original "' + originalKey + '" or saving resized image "' + key + ': ' + JSON.stringify(err, null, 2));
+        })
     });
 }
 
